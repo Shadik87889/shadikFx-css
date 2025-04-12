@@ -39,7 +39,7 @@ const cssProperties = [
 
   // Typography
   { property: "font-size", short: "fs" },
-  { property: "font-weight", short: "fw" }, // Added font-weight
+  { property: "font-weight", short: "fw" },
   { property: "line-height", short: "lh" },
   { property: "letter-spacing", short: "ls" },
   { property: "word-spacing", short: "ws" },
@@ -67,7 +67,6 @@ const cssProperties = [
   { property: "overflow", short: "ov" },
   { property: "cursor", short: "cur" },
 
-  // Newly added non-numeric properties
   { property: "white-space", short: "ws" },
   { property: "overflow-x", short: "ovx" },
   { property: "overflow-y", short: "ovy" },
@@ -157,8 +156,6 @@ const nonNumericProperties = {
     "step-end",
   ],
   transform: ["none", "scale(1)", "rotate(0deg)", "translate(0, 0)"],
-
-  // Added font-weight
   "font-weight": [
     "normal",
     "bold",
@@ -180,9 +177,6 @@ const unitMap = {
   default: ["px", "rem"],
   size: ["px", "rem", "%", "vw", "vh", "em", "ch"],
   spacing: ["px", "rem", "em", "%"],
-  zIndex: [],
-  opacity: [],
-  lineHeight: ["unitless", "em"],
 };
 
 function getUnitsForProperty(property) {
@@ -206,24 +200,23 @@ function getUnitsForProperty(property) {
     ].includes(property)
   )
     return unitMap.size;
-  if (["rotate"].includes(property)) return ["deg"];
-  if (["scale"].includes(property)) return ["unitless"];
-  if (["translate"].includes(property)) return ["px", "rem", "%"];
+  if (["rotate"]) return ["deg"];
+  if (["scale"]) return ["unitless"];
+  if (["translate"]) return ["px", "rem", "%"];
   if (["transition-duration", "transition-delay"].includes(property))
     return ["ms", "s"];
   return unitMap.default;
 }
 
 function generateGoogleFontCSS(fontFamilies) {
-  let googleFontCSS = "";
+  let css = "";
   fontFamilies.forEach((font) => {
-    const fontName = font.replace(/\s+/g, "+");
-    googleFontCSS += `@import url('https://fonts.googleapis.com/css2?family=${fontName}:wght@400;700&display=swap');\n`;
-    googleFontCSS += `.${font
-      .toLowerCase()
-      .replace(/\s+/g, "-")}-font { font-family: '${font}', sans-serif; }\n`;
+    const googleName = font.replace(/\s+/g, "+");
+    const className = font.toLowerCase().replace(/\s+/g, "-");
+    css += `@import url('https://fonts.googleapis.com/css2?family=${googleName}:wght@400;700&display=swap');\n`;
+    css += `.${className}-font { font-family: '${font}', sans-serif; }\n`;
   });
-  return googleFontCSS;
+  return css;
 }
 
 function sanitizeColorValue(value) {
@@ -285,6 +278,25 @@ function generateCSS(customColors = []) {
   return cssContent;
 }
 
+function getFontNamesFromDOM() {
+  const elements = document.querySelectorAll("[class*='-font']");
+  const fontSet = new Set();
+
+  elements.forEach((el) => {
+    el.classList.forEach((cls) => {
+      if (cls.endsWith("-font")) {
+        const fontName = cls
+          .replace("-font", "")
+          .replace(/-/g, " ")
+          .replace(/\b\w/g, (l) => l.toUpperCase());
+        fontSet.add(fontName);
+      }
+    });
+  });
+
+  return [...fontSet];
+}
+
 function injectCSS(fontFamilies = [], colorList = []) {
   const css = generateCSS(colorList);
   const googleFontCSS = generateGoogleFontCSS(fontFamilies);
@@ -293,14 +305,15 @@ function injectCSS(fontFamilies = [], colorList = []) {
   document.head.appendChild(style);
 }
 
-// Example usage
-const userSelectedFonts = ["Roboto", "Lato", "Open Sans"];
-const customColors = [
-  "#ff5733",
-  "rgb(34, 193, 195)",
-  "hsl(200, 100%, 50%)",
-  "black",
-  "white",
-];
-
-injectCSS(userSelectedFonts, customColors);
+// Usage: wait for DOM, auto-detect fonts from class names
+document.addEventListener("DOMContentLoaded", () => {
+  const customColors = [
+    "#ff5733",
+    "rgb(34, 193, 195)",
+    "hsl(200, 100%, 50%)",
+    "black",
+    "white",
+  ];
+  const detectedFonts = getFontNamesFromDOM();
+  injectCSS(detectedFonts, customColors);
+});
